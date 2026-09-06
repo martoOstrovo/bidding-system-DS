@@ -18,12 +18,6 @@ public class BidServiceImplementation implements BidService {
 
     private final BidRepository bidRepository;
 
-    /**
-     * Creates a new bid listing.
-     * Generates a random UUID for the new listing's id.
-     * highestBidderId is allowed to be null (nobody has bid yet).
-     * expirationDate must be in the future (enforced by @Future on BidDto).
-     */
     @Override
     public Bid createBid(BidDto bidDto) {
         Bid bid = BidMapper.mapToBid(bidDto, new Bid());
@@ -39,14 +33,6 @@ public class BidServiceImplementation implements BidService {
         return BidMapper.mapToBidDto(bid, new BidDto());
     }
 
-    /**
-     * Updates an existing bid listing identified by bidId.
-     * Updatable fields: itemId, highestBidderId, expirationDate.
-     * - itemId: replaced with the value from bidDto.
-     * - highestBidderId: replaced with the value from bidDto; passing null clears the current highest bidder.
-     * - expirationDate: replaced with the value from bidDto (must be in the future, enforced by @Future on BidDto).
-     * The listing's UUID is preserved; it is never changed.
-     */
     @Override
     public Bid updateBid(UUID bidId, BidDto bidDto) {
         Bid bid = bidRepository.findById(bidId)

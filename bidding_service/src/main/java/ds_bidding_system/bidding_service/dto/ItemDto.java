@@ -7,16 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
-/**
- * Local representation of item information compatible with item_service.
- *
- * Future Integration Note:
- * This DTO will be populated when events are consumed from an Apache Kafka topic
- * published by item_service (e.g., 'item-created-events' or 'item-updated-events').
- * In this service, the item reference is kept strictly as a UUID in the Bid entity,
- * with no direct JPA entity or foreign key relationship across service boundaries.
- * No Feign client, Kafka listener, or direct item database access is implemented yet.
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
