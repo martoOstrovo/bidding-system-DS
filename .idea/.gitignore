@@ -1,0 +1,37 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Ignored default folder with query files
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+
+# IntelliJ
+.idea/
+*.iml
+
+# Maven
+**/target/
+
+# Gradle
+**/build/
+.gradle/
+
+# Environment variables
+.env
+**/.env
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker/local volumes
+data/
+volumes/
