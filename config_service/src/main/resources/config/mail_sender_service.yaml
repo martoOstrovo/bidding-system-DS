@@ -21,3 +21,12 @@ spring:
 
 mail:
   from: ${MAIL_FROM:${spring.mail.username}}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8070/eureka/

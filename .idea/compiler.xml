@@ -9,6 +9,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="config_service" />
         <module name="gateway_service" />
+        <module name="eureka_service" />
       </profile>
       <profile name="Annotation profile for mail_sender_service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -27,6 +28,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="bidding_service" options="-parameters" />
       <module name="config_service" options="-parameters" />
+      <module name="eureka_service" options="-parameters" />
       <module name="gateway_service" options="-parameters" />
       <module name="item_service" options="-parameters" />
       <module name="mail_sender_service" options="-parameters" />
