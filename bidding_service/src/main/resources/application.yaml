@@ -1,3 +1,5 @@
 spring:
+  application:
+    name: bidding_service
   config:
     import: "configserver:http://localhost:8070/"

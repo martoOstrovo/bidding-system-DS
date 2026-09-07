@@ -1,3 +1,5 @@
 spring:
+  application:
+    name: item_service
   config:
     import: "configserver:http://localhost:8070/"
