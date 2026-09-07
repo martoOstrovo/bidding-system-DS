@@ -29,7 +29,8 @@ spring:
     config:
       server:
         git:
-          uri:
+          uri: "https://github.com/martoOstrovo/bidding-system-DS.git"
+          search-paths: "config_service/src/main/resources/config"
           default-label: master
           timeout: 5
           clone-on-start: true

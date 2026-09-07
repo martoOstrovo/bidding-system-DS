@@ -1,0 +1,35 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: bidding_service
+
+  datasource:
+    url: jdbc:h2:mem:test_db
+    driver-class-name: org.h2.Driver
+    username: da
+    password: ''
+
+  # Example configuration for PostgreSQL in production/docker:
+  # datasource:
+  #   url: jdbc:postgresql://localhost:5432/bidding_db
+  #   driver-class-name: org.postgresql.Driver
+  #   username: postgres
+  #   password: password
+
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

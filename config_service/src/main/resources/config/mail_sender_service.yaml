@@ -1,7 +1,4 @@
 spring:
-  config:
-    import: "configserver:http://localhost:8070/"
-
   application:
     name: mail_sender_service
   mail:
