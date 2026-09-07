@@ -5,10 +5,20 @@ spring:
   application:
     name: gateway_service
   config:
-    import: "configserver:http://localhost:8070/"
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8070/}"
   data:
     redis:
       connect-timeout: 2s
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: 1s
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    virtual-host-name: gateway-service
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8071/eureka/}

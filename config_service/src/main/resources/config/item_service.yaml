@@ -24,6 +24,7 @@ spring:
 eureka:
   instance:
     prefer-ip-address: true
+    virtual-host-name: item-service
   client:
     fetch-registry: true
     register-with-eureka: true
