@@ -7,6 +7,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="config_service" />
       </profile>
       <profile name="Annotation profile for mail_sender_service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -14,9 +15,18 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
         </processorPath>
         <module name="bidding_service" />
         <module name="mail_sender_service" />
+      </profile>
+      <profile name="Annotation profile for item_service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
+        </processorPath>
         <module name="item_service" />
       </profile>
     </annotationProcessing>
@@ -24,6 +34,7 @@
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="bidding_service" options="-parameters" />
+      <module name="config_service" options="-parameters" />
       <module name="item_service" options="-parameters" />
       <module name="mail_sender_service" options="-parameters" />
     </option>

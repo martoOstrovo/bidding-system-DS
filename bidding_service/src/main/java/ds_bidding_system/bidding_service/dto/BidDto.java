@@ -35,7 +35,7 @@ public class BidDto {
     private UUID highestBidderId;
 
     @Schema(description = "Timezone-aware date and time when the listing expires (must be a future date)",
-            example = "2026-12-31T23:59:59+02:00",
+             example = "2026-12-31T23:59:59+02:00",
             requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "Expiration date cannot be null.")
     @Future(message = "Expiration date must be in the future.")
