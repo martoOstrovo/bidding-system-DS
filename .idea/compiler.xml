@@ -11,7 +11,7 @@
         <module name="gateway_service" />
         <module name="eureka_service" />
       </profile>
-      <profile name="Annotation profile for mail_sender_service" enabled="true">
+      <profile name="Annotation profile for item_service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -19,8 +19,8 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
         </processorPath>
         <module name="bidding_service" />
-        <module name="mail_sender_service" />
         <module name="item_service" />
+        <module name="mail_sender_service" />
       </profile>
     </annotationProcessing>
   </component>
