@@ -6,3 +6,9 @@ spring:
     name: gateway_service
   config:
     import: "configserver:http://localhost:8070/"
+  data:
+    redis:
+      connect-timeout: 2s
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 1s
