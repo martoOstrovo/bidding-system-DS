@@ -7,9 +7,9 @@ spring:
     name: bidding_service
 
   datasource:
-    url: jdbc:h2:mem:test_db
+    url: jdbc:h2:mem:bidding_db
     driver-class-name: org.h2.Driver
-    username: da
+    username: sa
     password: ''
 
   h2:
@@ -19,8 +19,12 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
+
+  sql:
+    init:
+      mode: always
 
 eureka:
   instance:
@@ -54,3 +58,26 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://bidding-db:5432/bidding_db}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  sql:
+    init:
+      mode: always
+

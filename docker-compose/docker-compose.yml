@@ -74,6 +74,46 @@ services:
       service: microservice-config-service-config
 
 
+  bidding-db:
+    image: postgres:15-alpine
+    container_name: bidding-db-ms
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: bidding_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d bidding_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - bidding-db-data:/var/lib/postgresql/data
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+  item-db:
+    image: postgres:15-alpine
+    container_name: item-db-ms
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: item_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d item_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - item-db-data:/var/lib/postgresql/data
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
   bidding-service:
     image: martogr/bidding_service:v1
     container_name: bidding-ms
@@ -88,8 +128,10 @@ services:
         condition: service_healthy
       eureka-service:
         condition: service_healthy
-    #      rabbit:
-    #        condition: service_healthy
+      bidding-db:
+        condition: service_healthy
+#      rabbit:
+#        condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "bidding_service"
     extends:
@@ -109,6 +151,8 @@ services:
       config-service:
         condition: service_healthy
       eureka-service:
+        condition: service_healthy
+      item-db:
         condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "item_service"
@@ -179,5 +223,7 @@ networks:
 volumes:
   keycloak-data:
   redis-data:
+  bidding-db-data:
+  item-db-data:
 #  prometheus-data:
 #  rabbitmq-data:
