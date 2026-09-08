@@ -131,6 +131,9 @@ services:
         condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "gateway_service"
+      # Docker's host-side address on bidding-network; override if the subnet changes.
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_TRUSTEDPROXIES: '${GATEWAY_TRUSTED_PROXIES:-127\.0\.0\.1|::1|172\.18\.0\.1}'
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_XFORWARDED_PREFIXAPPEND: "false"
       SPRING_DATA_REDIS_CONNECTTIMEOUT: 2s
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
