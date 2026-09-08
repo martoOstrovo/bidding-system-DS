@@ -36,6 +36,35 @@ public class GatewayServiceApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+                .route("item_swagger", p -> p
+                        .order(-10)
+                        .path(
+                                "/item-service/swagger-ui.html",
+                                "/item-service/swagger-ui/**",
+                                "/item-service/v3/api-docs",
+                                "/item-service/v3/api-docs/**",
+                                "/item-service/v3/api-docs.yaml"
+                        )
+                        .filters(f -> f
+                                .stripPrefix(1)
+                                .preserveHostHeader()
+                                .setRequestHeader("X-Forwarded-Prefix", "/item-service"))
+                        .uri("lb://item-service"))
+
+                .route("bidding_swagger", p -> p
+                        .order(-10)
+                        .path(
+                                "/bidding-service/swagger-ui.html",
+                                "/bidding-service/swagger-ui/**",
+                                "/bidding-service/v3/api-docs",
+                                "/bidding-service/v3/api-docs/**",
+                                "/bidding-service/v3/api-docs.yaml"
+                        )
+                        .filters(f -> f
+                                .stripPrefix(1)
+                                .preserveHostHeader()
+                                .setRequestHeader("X-Forwarded-Prefix", "/bidding-service"))
+                        .uri("lb://bidding-service"))
                 .route("bidding_service_route", p -> p
                         .path("/ds_bidding_system/bidding_service/**", "/bidding_service/**", "/bidding-service/**", "/BIDDING_SERVICE/**", "/BIDDING-SERVICE/**")
                         .filters(f -> f.rewritePath("/ds_bidding_system/bidding_service/(?<segment>.*)", "/${segment}")
