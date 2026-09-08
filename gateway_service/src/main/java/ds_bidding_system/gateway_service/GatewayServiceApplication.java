@@ -18,18 +18,11 @@ public class GatewayServiceApplication {
 
     @Bean
     public KeyResolver userKeyResolver() {
-        return exchange -> Mono.just(
-                exchange.getRequest().getHeaders().getFirst("user") != null
-                        ? exchange.getRequest().getHeaders().getFirst("user")
-                        : exchange.getRequest().getRemoteAddress() != null && exchange.getRequest().getRemoteAddress().getAddress() != null
-                                ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
-                                : "anonymous"
-        );
+        return exchange -> exchange.getPrincipal().map(java.security.Principal::getName);
     }
 
     @Bean
     public RedisRateLimiter redisRateLimiter() {
-        // replenishRate: 1 token per second, burstCapacity: 1 token, requestedTokens: 1 token per request
         return new RedisRateLimiter(1, 1, 1);
     }
 
@@ -72,6 +65,8 @@ public class GatewayServiceApplication {
                                        .rewritePath("/bidding-service/(?<segment>.*)", "/${segment}")
                                        .rewritePath("/BIDDING_SERVICE/(?<segment>.*)", "/${segment}")
                                        .rewritePath("/BIDDING-SERVICE/(?<segment>.*)", "/${segment}")
+                                       .tokenRelay()
+                                       .removeRequestHeader("Cookie")
                                        .circuitBreaker(c -> c.setName("biddingCircuitBreaker")
                                                .setFallbackUri("forward:/fallback/bidding")
                                                .addStatusCode("500").addStatusCode("502").addStatusCode("503").addStatusCode("504"))
@@ -84,6 +79,8 @@ public class GatewayServiceApplication {
                                        .rewritePath("/item-service/(?<segment>.*)", "/${segment}")
                                        .rewritePath("/ITEM_SERVICE/(?<segment>.*)", "/${segment}")
                                        .rewritePath("/ITEM-SERVICE/(?<segment>.*)", "/${segment}")
+                                       .tokenRelay()
+                                       .removeRequestHeader("Cookie")
                                        .circuitBreaker(c -> c.setName("itemCircuitBreaker")
                                                .setFallbackUri("forward:/fallback/item")
                                                .addStatusCode("500").addStatusCode("502").addStatusCode("503").addStatusCode("504"))

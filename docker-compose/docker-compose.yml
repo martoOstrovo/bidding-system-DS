@@ -1,4 +1,28 @@
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    command: [ "start-dev", "--import-realm" ]
+    ports:
+      - "127.0.0.1:8083:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USERNAME:-admin}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in docker-compose/.env}"
+      KC_HOSTNAME: "http://localhost:8083"
+      KC_HEALTH_ENABLED: "true"
+      GATEWAY_OAUTH2_CLIENT_SECRET: "${GATEWAY_OAUTH2_CLIENT_SECRET:?Set GATEWAY_OAUTH2_CLIENT_SECRET in docker-compose/.env}"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: [ "CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
   redis:
     image: redis
     container_name: redis-ratelimit-ms
@@ -64,8 +88,8 @@ services:
         condition: service_healthy
       eureka-service:
         condition: service_healthy
-#      rabbit:
-#        condition: service_healthy
+    #      rabbit:
+    #        condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "bidding_service"
     extends:
@@ -121,6 +145,8 @@ services:
     ports:
       - "8090:8090"
     depends_on:
+      keycloak:
+        condition: service_healthy
       mail-sender-service:
         condition: service_healthy
       item-service:
@@ -131,6 +157,10 @@ services:
         condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "gateway_service"
+      GATEWAY_OAUTH2_CLIENT_SECRET: "${GATEWAY_OAUTH2_CLIENT_SECRET:?Set GATEWAY_OAUTH2_CLIENT_SECRET in docker-compose/.env}"
+      KEYCLOAK_BACKCHANNEL_URL: "http://keycloak:8080/realms/bidding"
+      KEYCLOAK_ISSUER_URI: "http://localhost:8083/realms/bidding"
+      KEYCLOAK_JWK_SET_URI: "http://keycloak:8080/realms/bidding/protocol/openid-connect/certs"
       # Docker's host-side address on bidding-network; override if the subnet changes.
       SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_TRUSTEDPROXIES: '${GATEWAY_TRUSTED_PROXIES:-127\.0\.0\.1|::1|172\.18\.0\.1}'
       SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_XFORWARDED_PREFIXAPPEND: "false"
@@ -138,7 +168,6 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_TIMEOUT: 1s
-#      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: "http://keycloak:8080/realms/master/protocol/openid-connect/certs"
     extends:
       file: common-config.yml
       service: microservice-eureka-config
@@ -148,7 +177,7 @@ networks:
     driver: bridge
 
 volumes:
+  keycloak-data:
   redis-data:
 #  prometheus-data:
-#  keycloak-data:
 #  rabbitmq-data:

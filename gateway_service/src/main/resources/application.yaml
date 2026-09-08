@@ -1,11 +1,34 @@
 server:
   port: 8090
+  reactive:
+    session:
+      timeout: 30m
+      cookie:
+        name: BIDDING_SESSION
+        http-only: true
+        same-site: lax
+        secure: ${GATEWAY_COOKIE_SECURE:false}
+
+app:
+  oauth2:
+    client-secret: ${GATEWAY_OAUTH2_CLIENT_SECRET}
+    public-url: ${GATEWAY_PUBLIC_URL:http://localhost:8090}
+    issuer: ${KEYCLOAK_ISSUER_URI:http://localhost:8083/realms/bidding}
+    backchannel-url: ${KEYCLOAK_BACKCHANNEL_URL:http://localhost:8083/realms/bidding}
 
 spring:
   application:
     name: gateway_service
   config:
     import: "configserver:${CONFIG_SERVER_URL:http://localhost:8070/}"
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8083/realms/bidding}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8083/realms/bidding/protocol/openid-connect/certs}
+          audiences:
+            - bidding-api
   data:
     redis:
       connect-timeout: 2s
