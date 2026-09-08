@@ -1,0 +1,26 @@
+services:
+  network-deploy-service:
+    networks:
+      - bidding-network
+
+  microservice-base-config:
+    extends:
+      service: network-deploy-service
+    deploy:
+      resources:
+        limits:
+          memory: 700m
+
+  microservice-config-service-config:
+    extends:
+      service: microservice-base-config
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      CONFIG_SERVER_URL: "http://config-service:8070/"
+      SPRING_CONFIG_IMPORT: "configserver:http://config-service:8070/"
+
+  microservice-eureka-config:
+    extends:
+      service: microservice-config-service-config
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-service:8071/eureka/

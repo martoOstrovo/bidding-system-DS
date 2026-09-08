@@ -3,4 +3,4 @@ spring:
     name: eureka_service
 
   config:
-    import: "optional:configserver:http://localhost:8070/"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8070/}"
