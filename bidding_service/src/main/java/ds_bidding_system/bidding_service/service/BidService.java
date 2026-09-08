@@ -3,7 +3,6 @@ package ds_bidding_system.bidding_service.service;
 import ds_bidding_system.bidding_service.dto.BidDto;
 import ds_bidding_system.bidding_service.dto.BidResponseDto;
 import ds_bidding_system.bidding_service.dto.CreateBidRequestDto;
-import ds_bidding_system.bidding_service.dto.ItemDto;
 import ds_bidding_system.bidding_service.entity.Bid;
 
 import java.util.UUID;
@@ -13,7 +12,6 @@ public interface BidService {
     Bid createBidWithItem(CreateBidRequestDto createBidRequestDto);
     BidDto getBid(UUID bidId);
     BidResponseDto getBidDetails(UUID bidId);
-    ItemDto fetchItemWithRetry(UUID itemId);
     Bid updateBid(UUID bidId, BidDto bidDto);
     void deleteBid(UUID bidId);
 }
