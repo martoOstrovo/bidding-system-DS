@@ -2,6 +2,8 @@ package ds_bidding_system.bidding_service.controller;
 
 import ds_bidding_system.bidding_service.constant.BidConstants;
 import ds_bidding_system.bidding_service.dto.BidDto;
+import ds_bidding_system.bidding_service.dto.BidResponseDto;
+import ds_bidding_system.bidding_service.dto.CreateBidRequestDto;
 import ds_bidding_system.bidding_service.dto.ErrorResponseDto;
 import ds_bidding_system.bidding_service.dto.ResponseDto;
 import ds_bidding_system.bidding_service.service.BidService;
@@ -35,6 +37,22 @@ public class BidController {
 
     private final BidService bidService;
 
+    @PostMapping("/create-with-item")
+    @Operation(summary = "Create a bid listing along with its item",
+               description = "Creates the item in item_service via Feign and creates the bid listing linked to the generated itemId.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Bid listing and item created successfully",
+                    content = @Content(schema = @Schema(implementation = ResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid bid or item information"),
+            @ApiResponse(responseCode = "503", description = "Item service unavailable (Item creation aborted without retry)")
+    })
+    public ResponseEntity<ResponseDto> createBidWithItem(@Valid @RequestBody CreateBidRequestDto createBidRequestDto) {
+        bidService.createBidWithItem(createBidRequestDto);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(new ResponseDto(BidConstants.STATUS_201, BidConstants.MESSAGE_201));
+    }
+
     @PostMapping("/create")
     @Operation(summary = "Create a bid listing",
                description = "Creates a new bid listing with a randomly generated UUID. " +
@@ -61,6 +79,19 @@ public class BidController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(new ResponseDto(BidConstants.STATUS_201, BidConstants.MESSAGE_201));
+    }
+
+    @GetMapping("/details/{id}")
+    @Operation(summary = "Get bid listing details with item info", description = "Retrieves bid listing and item details via Feign (with Resilience4j Retry & Fallback).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bid listing and item details retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = BidResponseDto.class))),
+            @ApiResponse(responseCode = "404", description = "Bid listing not found")
+    })
+    public ResponseEntity<BidResponseDto> getBidDetails(
+            @Parameter(description = "UUID of the bid listing", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(bidService.getBidDetails(id));
     }
 
     @GetMapping("/get/{id}")

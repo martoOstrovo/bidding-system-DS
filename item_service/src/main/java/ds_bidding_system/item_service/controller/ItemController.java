@@ -21,6 +21,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -33,6 +34,34 @@ import java.util.UUID;
         content = @Content(schema = @Schema(implementation = ErrorResponseDto.class)))
 public class ItemController {
     private final ItemService itemService;
+
+    @PostMapping(value = "/create-with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create an item with an optional image file", description = "Creates an item. If no image file is provided, a default placeholder image location is used.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Item created successfully",
+                    content = @Content(schema = @Schema(implementation = ItemDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid item payload or image file")
+    })
+    public ResponseEntity<ItemDto> createItemWithImage(
+            @RequestPart("item") @Valid ItemDto itemDto,
+            @RequestPart(value = "file", required = false) MultipartFile file) {
+        ItemDto createdItem = itemService.createItemWithImage(itemDto, file);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdItem);
+    }
+
+    @PostMapping(value = "/{id}/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload or update item image", description = "Uploads an image file for an existing item and updates its image location in the database.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Item image updated successfully",
+                    content = @Content(schema = @Schema(implementation = ItemDto.class))),
+            @ApiResponse(responseCode = "404", description = "Item not found")
+    })
+    public ResponseEntity<ItemDto> uploadItemImage(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+        ItemDto updatedItem = itemService.updateItemImage(id, file);
+        return ResponseEntity.ok(updatedItem);
+    }
 
     @PostMapping("/create")
     @Operation(summary = "Create an item", description = "Creates an item with a randomly generated UUID.")

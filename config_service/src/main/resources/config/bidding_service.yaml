@@ -26,6 +26,23 @@ spring:
     init:
       mode: always
 
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+resilience4j:
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+    instances:
+      getItemRetry:
+        base-config: default
+
 eureka:
   instance:
     prefer-ip-address: true
@@ -80,4 +97,10 @@ spring:
   sql:
     init:
       mode: always
+
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
 
