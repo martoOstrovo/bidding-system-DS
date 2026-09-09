@@ -23,12 +23,32 @@ public class GatewayServiceApplication {
 
     @Bean
     public RedisRateLimiter redisRateLimiter() {
-        return new RedisRateLimiter(1, 1, 1);
+        return new RedisRateLimiter(10, 30, 1);
     }
 
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+                .route("account_swagger", p -> p.order(-10)
+                        .path("/account-service/swagger-ui.html", "/account-service/swagger-ui/**",
+                                "/account-service/v3/api-docs", "/account-service/v3/api-docs/**",
+                                "/account-service/v3/api-docs.yaml")
+                        .filters(f -> f.stripPrefix(1).preserveHostHeader()
+                                .setRequestHeader("X-Forwarded-Prefix", "/account-service"))
+                        .uri("lb://account-service"))
+                .route("account_registration", p -> p.order(-10)
+                        .path("/auth/register", "/account_service/api/register", "/account-service/api/register")
+                        .and().method("POST")
+                        .filters(f -> f.setPath("/api/register").removeRequestHeader("Cookie")
+                                .requestRateLimiter(r -> r.setRateLimiter(redisRateLimiter()).setKeyResolver(exchange ->
+                                        Mono.justOrEmpty(exchange.getRequest().getRemoteAddress())
+                                                .map(address -> "registration:" + address.getAddress().getHostAddress()))))
+                        .uri("lb://account-service"))
+                .route("account_service_route", p -> p
+                        .path("/account_service/**", "/account-service/**")
+                        .filters(f -> f.stripPrefix(1).tokenRelay().removeRequestHeader("Cookie")
+                                .requestRateLimiter(r -> r.setRateLimiter(redisRateLimiter()).setKeyResolver(userKeyResolver())))
+                        .uri("lb://account-service"))
                 .route("item_images", p -> p
                         .order(-10)
                         .path("/uploads/images/**", "/item-service/uploads/images/**")
@@ -68,30 +88,30 @@ public class GatewayServiceApplication {
                 .route("bidding_service_route", p -> p
                         .path("/ds_bidding_system/bidding_service/**", "/bidding_service/**", "/bidding-service/**", "/BIDDING_SERVICE/**", "/BIDDING-SERVICE/**")
                         .filters(f -> f.rewritePath("/ds_bidding_system/bidding_service/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/bidding_service/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/bidding-service/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/BIDDING_SERVICE/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/BIDDING-SERVICE/(?<segment>.*)", "/${segment}")
-                                       .tokenRelay()
-                                       .removeRequestHeader("Cookie")
-                                       .circuitBreaker(c -> c.setName("biddingCircuitBreaker")
-                                               .setFallbackUri("forward:/fallback/bidding")
-                                               .addStatusCode("500").addStatusCode("502").addStatusCode("503").addStatusCode("504"))
-                                       .requestRateLimiter(r -> r.setRateLimiter(redisRateLimiter()).setKeyResolver(userKeyResolver())))
+                                .rewritePath("/bidding_service/(?<segment>.*)", "/${segment}")
+                                .rewritePath("/bidding-service/(?<segment>.*)", "/${segment}")
+                                .rewritePath("/BIDDING_SERVICE/(?<segment>.*)", "/${segment}")
+                                .rewritePath("/BIDDING-SERVICE/(?<segment>.*)", "/${segment}")
+                                .tokenRelay()
+                                .removeRequestHeader("Cookie")
+                                .circuitBreaker(c -> c.setName("biddingCircuitBreaker")
+                                        .setFallbackUri("forward:/fallback/bidding")
+                                        .addStatusCode("500").addStatusCode("502").addStatusCode("503").addStatusCode("504"))
+                                .requestRateLimiter(r -> r.setRateLimiter(redisRateLimiter()).setKeyResolver(userKeyResolver())))
                         .uri("lb://bidding-service"))
                 .route("item_service_route", p -> p
                         .path("/ds_bidding_system/item_service/**", "/item_service/**", "/item-service/**", "/ITEM_SERVICE/**", "/ITEM-SERVICE/**")
                         .filters(f -> f.rewritePath("/ds_bidding_system/item_service/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/item_service/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/item-service/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/ITEM_SERVICE/(?<segment>.*)", "/${segment}")
-                                       .rewritePath("/ITEM-SERVICE/(?<segment>.*)", "/${segment}")
-                                       .tokenRelay()
-                                       .removeRequestHeader("Cookie")
-                                       .circuitBreaker(c -> c.setName("itemCircuitBreaker")
-                                               .setFallbackUri("forward:/fallback/item")
-                                               .addStatusCode("500").addStatusCode("502").addStatusCode("503").addStatusCode("504"))
-                                       .requestRateLimiter(r -> r.setRateLimiter(redisRateLimiter()).setKeyResolver(userKeyResolver())))
+                                .rewritePath("/item_service/(?<segment>.*)", "/${segment}")
+                                .rewritePath("/item-service/(?<segment>.*)", "/${segment}")
+                                .rewritePath("/ITEM_SERVICE/(?<segment>.*)", "/${segment}")
+                                .rewritePath("/ITEM-SERVICE/(?<segment>.*)", "/${segment}")
+                                .tokenRelay()
+                                .removeRequestHeader("Cookie")
+                                .circuitBreaker(c -> c.setName("itemCircuitBreaker")
+                                        .setFallbackUri("forward:/fallback/item")
+                                        .addStatusCode("500").addStatusCode("502").addStatusCode("503").addStatusCode("504"))
+                                .requestRateLimiter(r -> r.setRateLimiter(redisRateLimiter()).setKeyResolver(userKeyResolver())))
                         .uri("lb://item-service"))
                 .build();
     }

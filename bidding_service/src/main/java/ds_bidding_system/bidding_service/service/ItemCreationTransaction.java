@@ -21,14 +21,20 @@ public class ItemCreationTransaction {
 
     // The intent was committed before this transaction. A failed commit leaves it for cleanup.
     @Transactional
-    public Bid create(UUID itemId, CreateBidRequestDto request) {
+    public Bid create(UUID itemId, CreateBidRequestDto request, String ownerId) {
+        if (ownerId == null || ownerId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
+        }
         var cleanup = cleanups.lockById(itemId).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.CONFLICT, "Item creation expired; please retry."));
         items.createItem(request.getItem());
         Bid bid = new Bid();
         bid.setId(cleanup.getBidId());
         bid.setItemId(itemId);
+        bid.setOwnerId(ownerId);
         bid.setExpirationDate(request.getExpirationDate());
+        bid.setStartingPrice(request.getStartingPrice());
+        bid.setCurrentBid(request.getStartingPrice());
         bids.saveAndFlush(bid);
         cleanups.delete(cleanup);
         return bid;

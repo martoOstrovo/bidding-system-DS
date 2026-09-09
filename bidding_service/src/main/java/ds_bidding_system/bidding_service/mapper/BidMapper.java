@@ -10,23 +10,27 @@ public class BidMapper {
     private BidMapper() {}
 
     public static BidDto mapToBidDto(Bid bid, BidDto bidDto) {
+        bidDto.setOwnerId(bid.getOwnerId());
+        bidDto.setStatus(bid.getStatus());
         bidDto.setId(bid.getId());
         bidDto.setItemId(bid.getItemId());
         bidDto.setHighestBidderId(bid.getHighestBidderId());
         bidDto.setExpirationDate(bid.getExpirationDate());
+        bidDto.setStartingPrice(bid.getStartingPrice());
+        bidDto.setCurrentBid(bid.getCurrentBid());
         return bidDto;
     }
 
     public static Bid mapToBid(BidDto bidDto, Bid bid) {
         bid.setItemId(bidDto.getItemId());
-        bid.setHighestBidderId(bidDto.getHighestBidderId());
+        bid.setStartingPrice(bidDto.getStartingPrice());
         bid.setExpirationDate(bidDto.getExpirationDate());
         return bid;
     }
 
     public static Bid mapToBid(BidRequestDto requestDto, Bid bid) {
         bid.setItemId(requestDto.getItemId());
-        bid.setHighestBidderId(requestDto.getHighestBidderId());
+        bid.setStartingPrice(requestDto.getStartingPrice());
         bid.setExpirationDate(requestDto.getExpirationDate());
         return bid;
     }
@@ -37,7 +41,11 @@ public class BidMapper {
                 bid.getItemId(),
                 bid.getHighestBidderId(),
                 bid.getExpirationDate(),
-                itemDto
+                itemDto,
+                bid.getOwnerId(),
+                bid.getStartingPrice(),
+                bid.getCurrentBid(),
+                bid.getStatus()
         );
     }
 }

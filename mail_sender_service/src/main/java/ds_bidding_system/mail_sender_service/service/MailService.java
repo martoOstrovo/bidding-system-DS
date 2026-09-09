@@ -5,9 +5,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
+import java.math.BigDecimal;
 
 public interface MailService {
-    void sendBidWonEmail(@NotNull @Valid UserDto user, @NotNull UUID bidId);
+    void sendBidWonEmail(@NotNull @Valid UserDto user, @NotNull UUID bidId, @NotNull BigDecimal amount);
 
-    void sendOutbidEmail(@NotNull @Valid UserDto user, @NotNull UUID bidId);
+    void sendOutbidEmail(@NotNull @Valid UserDto user, @NotNull UUID bidId, @NotNull BigDecimal amount);
+
+    void sendAuctionEndedEmail(@NotNull @Valid UserDto user, @NotNull UUID bidId, @NotNull BigDecimal amount, boolean sold);
 }

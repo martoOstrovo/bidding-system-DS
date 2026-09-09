@@ -1,4 +1,11 @@
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8083/realms/bidding}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8083/realms/bidding/protocol/openid-connect/certs}
+          audiences: bidding-api
   application:
     name: bidding_service
   config:
@@ -20,7 +27,34 @@ spring:
       ddl-auto: update
     show-sql: true
 
+  sql:
+    init:
+      mode: always
+
   cloud:
+    stream:
+      output-bindings: bidWon-out-0;auctionEnded-out-0;bidderOutbid-out-0
+      bindings:
+        bidWon-out-0:
+          destination: auction-won
+          content-type: application/json
+        auctionEnded-out-0:
+          destination: auction-ended
+          content-type: application/json
+        bidderOutbid-out-0:
+          destination: bidder-outbid
+          content-type: application/json
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+          replication-factor: 1
+        default:
+          producer:
+            sync: true
+            configuration:
+              delivery.timeout.ms: 10000
+              request.timeout.ms: 5000
+              max.block.ms: 10000
     circuitbreaker:
       resilience4j:
         disable-time-limiter: true
@@ -32,3 +66,7 @@ spring:
           item-service:
             connectTimeout: 2000
             readTimeout: 5000
+
+auction:
+  expiration:
+    interval-ms: ${AUCTION_EXPIRATION_INTERVAL_MS:30000}

@@ -8,6 +8,34 @@
   "bruteForceProtected": true,
   "clients": [
     {
+      "clientId": "mail-service",
+      "name": "Auction mail account lookup",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${MAIL_KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["bidding-api"]
+    },
+    {
+      "clientId": "account-service",
+      "name": "Account service user administration",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${ACCOUNT_KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true
+    },
+    {
       "clientId": "bidding-gateway",
       "name": "Bidding gateway browser login",
       "enabled": true,
@@ -53,6 +81,14 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-account-service",
+      "enabled": true,
+      "serviceAccountClientId": "account-service",
+      "clientRoles": { "realm-management": ["manage-users", "view-users"] }
     }
   ],
   "clientScopes": [

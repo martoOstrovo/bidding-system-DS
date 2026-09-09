@@ -25,6 +25,7 @@ import org.springframework.security.web.server.authentication.logout.WebSessionS
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 import org.springframework.security.web.server.savedrequest.NoOpServerRequestCache;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher.MatchResult;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 
 @Configuration
 public class SecurityConfig {
@@ -63,7 +64,9 @@ public class SecurityConfig {
                         .authorizedClientRepository(clients)
                         .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler("/auth/me")))
                 .oauth2Client(client -> client.authorizedClientRepository(clients))
-                .logout(spec -> spec.logoutHandler(new DelegatingServerLogoutHandler(
+                .logout(spec -> spec.requiresLogout(ServerWebExchangeMatchers.pathMatchers(HttpMethod.POST,
+                                "/logout", "/auth/logout", "/account_service/api/logout", "/account-service/api/logout"))
+                        .logoutHandler(new DelegatingServerLogoutHandler(
                                 new SecurityContextServerLogoutHandler(), new WebSessionServerLogoutHandler()))
                         .logoutSuccessHandler(logout))
                 .build();
@@ -75,12 +78,17 @@ public class SecurityConfig {
                 .requestCache(cache -> cache.requestCache(NoOpServerRequestCache.getInstance()))
                 .exceptionHandling(errors -> errors.authenticationEntryPoint(new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/account-service/internal/**", "/account_service/internal/**").denyAll()
+                        .pathMatchers(HttpMethod.POST, "/auth/register", "/account_service/api/register", "/account-service/api/register").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/auth/login", "/account_service/api/login", "/account-service/api/login").permitAll()
                         .pathMatchers(HttpMethod.GET, "/oauth2/authorization/keycloak", "/login/oauth2/code/keycloak",
                                 "/login", "/auth/csrf", "/auth/logged-out",
                                 "/actuator/health", "/actuator/health/**", "/actuator/prometheus").permitAll()
                         .pathMatchers("/actuator", "/actuator/**", "/*/actuator", "/*/actuator/**",
                                 "/ds_bidding_system/*/actuator", "/ds_bidding_system/*/actuator/**").denyAll()
                         .pathMatchers(HttpMethod.GET,
+                                "/account-service/swagger-ui.html", "/account-service/swagger-ui/**",
+                                "/account-service/v3/api-docs", "/account-service/v3/api-docs/**", "/account-service/v3/api-docs.yaml",
                                 "/item-service/swagger-ui.html", "/item-service/swagger-ui/**",
                                 "/item-service/v3/api-docs", "/item-service/v3/api-docs/**", "/item-service/v3/api-docs.yaml",
                                 "/bidding-service/swagger-ui.html", "/bidding-service/swagger-ui/**",

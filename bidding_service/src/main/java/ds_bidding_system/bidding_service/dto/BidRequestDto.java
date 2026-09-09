@@ -8,6 +8,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import java.util.UUID;
 
 @Data
@@ -22,10 +25,11 @@ public class BidRequestDto {
     @NotNull(message = "Item ID cannot be null.")
     private UUID itemId;
 
-    @Schema(description = "UUID identifying the current highest bidder, or null when nobody has bid yet",
-            example = "8c6b3e94-3d71-4b44-9a3b-9e4dfd1c92a6",
-            nullable = true)
-    private UUID highestBidderId;
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 17, fraction = 2)
+    @Schema(description = "Opening price", example = "25.00", requiredMode = Schema.RequiredMode.REQUIRED)
+    private BigDecimal startingPrice;
 
     @Schema(description = "Timezone-aware date and time when the listing expires (must be a future date)",
             example = "2026-12-31T23:59:59+02:00",

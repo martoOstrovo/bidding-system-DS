@@ -1,0 +1,53 @@
+server:
+  port: 8084
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: account_service
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8070/}"
+  datasource:
+    url: ${ACCOUNT_DATABASE_URL:jdbc:h2:file:./data/account_db}
+    username: ${ACCOUNT_DATABASE_USERNAME:sa}
+    password: ${ACCOUNT_DATABASE_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  sql:
+    init:
+      mode: always
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8083/realms/bidding}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8083/realms/bidding/protocol/openid-connect/certs}
+          audiences: bidding-api
+
+app:
+  gateway-public-url: ${GATEWAY_PUBLIC_URL:http://localhost:8090}
+  keycloak:
+    server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8083}
+    realm: ${KEYCLOAK_REALM:bidding}
+    client-id: ${ACCOUNT_KEYCLOAK_CLIENT_ID:account-service}
+    client-secret: ${ACCOUNT_KEYCLOAK_CLIENT_SECRET}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    virtual-host-name: account-service
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8071/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

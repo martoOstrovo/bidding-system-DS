@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.UUID;
+import java.math.BigDecimal;
 
 @Service
 @Validated
@@ -22,25 +23,33 @@ public class MailServiceImplementation implements MailService {
     }
 
     @Override
-    public void sendBidWonEmail(UserDto user, UUID bidId) {
+    public void sendBidWonEmail(UserDto user, UUID bidId, BigDecimal amount) {
         sendEmail(user, "You won the bid!",
-                "Congratulations! You won the bid listing " + bidId + ".");
+                "Congratulations! You won the bid listing " + bidId + " with a final bid of " + amount.toPlainString() + ".");
     }
 
     @Override
-    public void sendOutbidEmail(UserDto user, UUID bidId) {
+    public void sendOutbidEmail(UserDto user, UUID bidId, BigDecimal amount) {
         sendEmail(user, "You have been outbid",
                 "Another user has placed a higher bid on listing " + bidId
+                        + ". The new bid is " + amount.toPlainString()
                         + ".\nVisit the bidding system to check the listing and place a new bid if it is still open.");
     }
 
+    @Override
+    public void sendAuctionEndedEmail(UserDto user, UUID bidId, BigDecimal amount, boolean sold) {
+        sendEmail(user, "Your auction has ended", sold
+                ? "Your auction " + bidId + " has ended. The winning bid was " + amount.toPlainString() + "."
+                : "Your auction " + bidId + " has ended without any bids.");
+    }
+
     private void sendEmail(UserDto user, String subject, String body) {
-        String greeting = user.getFirstName() == null || user.getFirstName().isBlank()
-                ? "Hello," : "Hello " + user.getFirstName().strip() + ",";
+        String greeting = user.username() == null || user.username().isBlank()
+                ? "Hello," : "Hello " + user.username().strip() + ",";
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
-        message.setTo(user.getEmail());
+        message.setTo(user.email());
         message.setSubject(subject);
         message.setText(greeting + "\n\n" + body + "\n\nThe Bidding System team");
 

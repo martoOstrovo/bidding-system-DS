@@ -21,6 +21,12 @@ import java.util.Map;
 @ControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    @ExceptionHandler(org.springframework.dao.PessimisticLockingFailureException.class)
+    public ResponseEntity<org.springframework.http.ProblemDetail> handleConcurrentBid() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(org.springframework.http.ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "Auction is being updated. Refresh it and retry your offer."));
+    }
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
                                                                   HttpHeaders headers,

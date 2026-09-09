@@ -1,5 +1,96 @@
+server:
+  port: 8082
+
 spring:
   application:
     name: mail_sender_service
   config:
-    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8070/}"
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8070/}"
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      "[mail.smtp.auth]": ${MAIL_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MAIL_STARTTLS_ENABLE:true}
+      "[mail.smtp.starttls.required]": ${MAIL_STARTTLS_REQUIRED:true}
+      "[mail.smtp.ssl.enable]": ${MAIL_SSL_ENABLE:false}
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
+  security:
+    oauth2:
+      client:
+        registration:
+          mail-service:
+            provider: keycloak
+            client-id: ${MAIL_KEYCLOAK_CLIENT_ID:mail-service}
+            client-secret: ${MAIL_KEYCLOAK_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+        provider:
+          keycloak:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:8083/realms/bidding/protocol/openid-connect/token}
+  cloud:
+    function:
+      definition: bidWon;auctionEnded;bidderOutbid
+    openfeign:
+      oauth2:
+        enabled: true
+        clientRegistrationId: mail-service
+      client:
+        config:
+          account-service:
+            connectTimeout: 2000
+            readTimeout: 5000
+    stream:
+      default:
+        content-type: application/json
+        group: auction-mail
+        consumer:
+          max-attempts: 3
+          back-off-initial-interval: 1000
+          back-off-max-interval: 5000
+      bindings:
+        bidWon-in-0:
+          destination: auction-won
+        auctionEnded-in-0:
+          destination: auction-ended
+        bidderOutbid-in-0:
+          destination: bidder-outbid
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+          replication-factor: 1
+        bindings:
+          bidWon-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: auction-won-dlq
+          auctionEnded-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: auction-ended-dlq
+          bidderOutbid-in-0:
+            consumer:
+              enable-dlq: true
+              dlq-name: bidder-outbid-dlq
+
+mail:
+  from: ${MAIL_FROM:${spring.mail.username}}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8071/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

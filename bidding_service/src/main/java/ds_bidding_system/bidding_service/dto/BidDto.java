@@ -9,6 +9,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import java.util.UUID;
 
 @Data
@@ -17,6 +21,15 @@ import java.util.UUID;
 @AllArgsConstructor
 @Schema(name = "Bid", description = "Schema to hold bid listing information")
 public class BidDto {
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Schema(description = "OPEN until the expiry worker finalizes the auction; offers always check expirationDate too",
+            accessMode = Schema.AccessMode.READ_ONLY)
+    private ds_bidding_system.bidding_service.entity.AuctionStatus status;
+
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    @Schema(description = "Keycloak ID of the authenticated listing creator", accessMode = Schema.AccessMode.READ_ONLY)
+    private String ownerId;
 
     @Schema(description = "UUID of the bid listing (generated on create, preserved on update)",
             example = "550e8400-e29b-41d4-a716-446655440000",
@@ -29,10 +42,23 @@ public class BidDto {
     @NotNull(message = "Item ID cannot be null.")
     private UUID itemId;
 
-    @Schema(description = "UUID identifying the current highest bidder, or null when nobody has bid yet",
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Schema(description = "Keycloak ID of the current highest bidder, or null when nobody has bid yet",
             example = "8c6b3e94-3d71-4b44-9a3b-9e4dfd1c92a6",
-            nullable = true)
-    private UUID highestBidderId;
+            nullable = true, accessMode = Schema.AccessMode.READ_ONLY)
+    private String highestBidderId;
+
+    @NotNull(message = "Starting price is required.")
+    @DecimalMin(value = "0.00", message = "Starting price cannot be negative.")
+    @Digits(integer = 17, fraction = 2)
+    @Schema(description = "Opening price; the first offer must exceed this amount", example = "25.00",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    private BigDecimal startingPrice;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Schema(description = "Highest accepted amount, or the starting price when there are no offers",
+            example = "30.00", accessMode = Schema.AccessMode.READ_ONLY)
+    private BigDecimal currentBid;
 
     @Schema(description = "Timezone-aware date and time when the listing expires (must be a future date)",
              example = "2026-12-31T23:59:59+02:00",

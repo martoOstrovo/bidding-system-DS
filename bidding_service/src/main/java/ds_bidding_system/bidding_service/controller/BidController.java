@@ -6,6 +6,8 @@ import ds_bidding_system.bidding_service.dto.BidResponseDto;
 import ds_bidding_system.bidding_service.dto.CreateBidRequestDto;
 import ds_bidding_system.bidding_service.dto.ErrorResponseDto;
 import ds_bidding_system.bidding_service.dto.ResponseDto;
+import ds_bidding_system.bidding_service.dto.PlaceBidRequestDto;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import ds_bidding_system.bidding_service.service.BidService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,20 +24,57 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping(path = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
 @Validated
 @AllArgsConstructor
-@Tag(name = "Bids", description = "Create, retrieve, update, and delete bid listings")
+@Tag(name = "Bids", description = "Browse auctions, place offers, and manage your listings")
 @ApiResponse(responseCode = "500", description = "Unexpected server error",
         content = @Content(schema = @Schema(implementation = ErrorResponseDto.class)))
 public class BidController {
 
     private final BidService bidService;
+
+    @GetMapping("/list")
+    @Operation(summary = "Browse auctions", description = "Returns a JSON list ordered by expiration time and ID. "
+            + "Includes expired auctions unless activeOnly=true. Each entry includes itemId, ownerId, startingPrice, "
+            + "currentBid and highestBidderId. Use the details endpoint for the full item information.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Auction list; empty when none match",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = BidDto.class)))),
+            @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content)
+    })
+    public ResponseEntity<List<BidDto>> listBids(
+            @Parameter(description = "Include only auctions whose expiration is still in the future")
+            @RequestParam(defaultValue = "false") boolean activeOnly) {
+        return ResponseEntity.ok(bidService.listBids(activeOnly));
+    }
+
+    @PostMapping("/{id}/bid")
+    @Operation(summary = "Place an offer", description = "Accepts an amount strictly larger than the current bid before "
+            + "the auction expires. The bidder is the authenticated user, who cannot be the owner. The amount and bidder "
+            + "are updated together under a database lock. Browser requests through the gateway require CSRF.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Offer accepted; updated auction returned",
+                    content = @Content(schema = @Schema(implementation = BidDto.class))),
+            @ApiResponse(responseCode = "400", description = "Missing, invalid, or overly precise amount", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Owner cannot bid on their own auction", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Offer is not higher, auction expired, or concurrent update needs retry", content = @Content)
+    })
+    public ResponseEntity<BidDto> placeBid(@PathVariable UUID id,
+            @Valid @RequestBody PlaceBidRequestDto request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(bidService.placeBid(id, request.amount(), jwt.getSubject()));
+    }
 
     @PostMapping("/create-with-item")
     @Operation(summary = "Create a bid listing along with its item",
@@ -46,8 +85,9 @@ public class BidController {
             @ApiResponse(responseCode = "400", description = "Invalid bid or item information"),
             @ApiResponse(responseCode = "503", description = "Item service unavailable (Item creation aborted without retry)")
     })
-    public ResponseEntity<ResponseDto> createBidWithItem(@Valid @RequestBody CreateBidRequestDto createBidRequestDto) {
-        var bid = bidService.createBidWithItem(createBidRequestDto);
+    public ResponseEntity<ResponseDto> createBidWithItem(@Valid @RequestBody CreateBidRequestDto createBidRequestDto,
+                                                       @AuthenticationPrincipal Jwt jwt) {
+        var bid = bidService.createBidWithItem(createBidRequestDto, jwt.getSubject());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .header("Location", "/bidding-service/api/details/" + bid.getId())
@@ -57,7 +97,7 @@ public class BidController {
     @PostMapping("/create")
     @Operation(summary = "Create a bid listing",
                description = "Creates a new bid listing with a randomly generated UUID. " +
-                             "highestBidderId may be omitted (null) when no bids have been placed yet. " +
+                             "startingPrice is required; currentBid begins at that price and highestBidderId is assigned only by an accepted offer. " +
                              "expirationDate must be a future timezone-aware date/time.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Bid listing created successfully",
@@ -75,10 +115,11 @@ public class BidController {
                                     schema = @Schema(implementation = ProblemDetail.class))
                     })
     })
-    public ResponseEntity<ResponseDto> createBid(@Valid @RequestBody BidDto bidDto) {
-        bidService.createBid(bidDto);
+    public ResponseEntity<ResponseDto> createBid(@Valid @RequestBody BidDto bidDto, @AuthenticationPrincipal Jwt jwt) {
+        var bid = bidService.createBid(bidDto, jwt.getSubject());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
+                .header("Location", "/bidding-service/api/details/" + bid.getId())
                 .body(new ResponseDto(BidConstants.STATUS_201, BidConstants.MESSAGE_201));
     }
 
@@ -114,9 +155,9 @@ public class BidController {
 
     @PutMapping("/put/{id}")
     @Operation(summary = "Update a bid listing",
-               description = "Replaces the bid listing's fields while preserving its UUID. " +
-                             "Updatable fields: itemId, highestBidderId, expirationDate. " +
-                             "Setting highestBidderId to null clears the current highest bidder. " +
+               description = "Only the owner can edit an unexpired auction with no offers. " +
+                             "Updatable fields: itemId, startingPrice, expirationDate. " +
+                             "Ownership, highestBidderId and currentBid cannot be supplied by the caller. " +
                              "expirationDate must be a future timezone-aware date/time.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bid listing updated successfully",
@@ -136,13 +177,13 @@ public class BidController {
     public ResponseEntity<ResponseDto> updateBid(
             @Parameter(description = "UUID of the bid listing to update", example = "550e8400-e29b-41d4-a716-446655440000")
             @PathVariable UUID id,
-            @Valid @RequestBody BidDto bidDto) {
-        bidService.updateBid(id, bidDto);
+            @Valid @RequestBody BidDto bidDto, @AuthenticationPrincipal Jwt jwt) {
+        bidService.updateBid(id, bidDto, jwt.getSubject());
         return ResponseEntity.ok(new ResponseDto(BidConstants.STATUS_200, BidConstants.MESSAGE_200));
     }
 
     @DeleteMapping("/delete/{id}")
-    @Operation(summary = "Delete a bid listing", description = "Deletes the bid listing identified by its UUID.")
+    @Operation(summary = "Delete a bid listing", description = "Only the owner can delete a listing, and only when it has no offers.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bid listing deleted successfully",
                     content = @Content(schema = @Schema(implementation = ResponseDto.class))),
@@ -154,8 +195,8 @@ public class BidController {
     })
     public ResponseEntity<ResponseDto> deleteBid(
             @Parameter(description = "UUID of the bid listing to delete", example = "550e8400-e29b-41d4-a716-446655440000")
-            @PathVariable UUID id) {
-        bidService.deleteBid(id);
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        bidService.deleteBid(id, jwt.getSubject());
         return ResponseEntity.ok(new ResponseDto(BidConstants.STATUS_200, BidConstants.MESSAGE_200));
     }
 }

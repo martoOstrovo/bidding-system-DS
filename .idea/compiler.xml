@@ -7,9 +7,10 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="eureka_service" />
         <module name="config_service" />
         <module name="gateway_service" />
-        <module name="eureka_service" />
+        <module name="account_service" />
       </profile>
       <profile name="Annotation profile for mail_sender_service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -26,6 +27,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="account_service" options="-parameters" />
       <module name="bidding_service" options="-parameters" />
       <module name="config_service" options="-parameters" />
       <module name="eureka_service" options="-parameters" />

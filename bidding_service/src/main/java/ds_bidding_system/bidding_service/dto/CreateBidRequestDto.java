@@ -9,6 +9,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 
 @Data
 @NoArgsConstructor
@@ -25,4 +28,11 @@ public class CreateBidRequestDto {
     @Future(message = "Expiration date must be in the future.")
     @Schema(description = "Timezone-aware date and time when the listing expires", example = "2026-12-31T23:59:59+02:00")
     private OffsetDateTime expirationDate;
+
+    @NotNull(message = "Starting price is required.")
+    @DecimalMin(value = "0.00", message = "Starting price cannot be negative.")
+    @Digits(integer = 17, fraction = 2)
+    @Schema(description = "Opening price; the first offer must exceed this amount", example = "25.00",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    private BigDecimal startingPrice;
 }
