@@ -24,3 +24,11 @@ spring:
     init:
       mode: always
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:uploads/images}
+

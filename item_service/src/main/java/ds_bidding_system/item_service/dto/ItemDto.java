@@ -27,6 +27,6 @@ public class ItemDto {
     @NotEmpty(message = "Item description cannot be empty.")
     private String itemDescription;
 
-    @Schema(description = "Path/URL to the item image location", example = "/uploads/images/default-item.png")
+    @Schema(description = "Server-managed image URL; use the upload endpoint to change it", accessMode = Schema.AccessMode.READ_ONLY, example = "/uploads/images/default-item.png")
     private String itemImageLocation;
 }

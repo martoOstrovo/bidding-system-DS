@@ -12,6 +12,9 @@ import ds_bidding_system.item_service.service.ItemService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -24,11 +27,13 @@ public class ItemServiceImplementation implements ItemService {
     private final FileStorageService fileStorageService;
 
     @Override
+    @Transactional
     public ItemDto createItem(ItemDto itemDto) {
         return createItemWithImage(itemDto, null);
     }
 
     @Override
+    @Transactional
     public ItemDto createItemWithImage(ItemDto itemDto, MultipartFile imageFile) {
         Optional<Item> itemOptional = itemRepository.findByItemName(itemDto.getItemName());
 
@@ -38,18 +43,17 @@ public class ItemServiceImplementation implements ItemService {
 
         Item item = ItemMapper.mapToItem(itemDto, new Item());
         if (itemDto.getId() != null) {
+            if (itemRepository.existsById(itemDto.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "An item with this ID already exists.");
+            }
             item.setId(itemDto.getId());
         } else {
             ItemID itemID = new ItemID(UUID.randomUUID());
             item.setId(itemID.id());
         }
 
-        // Set image location: if file provided, store it; if DTO has string location, keep it; else default image
-        if (imageFile != null && !imageFile.isEmpty()) {
-            item.setItemImageLocation(fileStorageService.storeFile(imageFile));
-        } else if (item.getItemImageLocation() == null || item.getItemImageLocation().isBlank()) {
-            item.setItemImageLocation(FileStorageService.DEFAULT_IMAGE_LOCATION);
-        }
+        // Image locations are server-managed; clients upload pixels through the image endpoint.
+        item.setItemImageLocation(fileStorageService.storeFile(imageFile));
 
         Item savedItem = itemRepository.save(item);
         return ItemMapper.mapToItemDTO(savedItem, new ItemDto());
@@ -64,35 +68,41 @@ public class ItemServiceImplementation implements ItemService {
     }
 
     @Override
+    @Transactional
     public Item updateItem(UUID itemId, ItemDto itemDto) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new ItemNotFoundException(itemId));
 
-        Item updatedItem = ItemMapper.mapToItem(itemDto, item);
-        if (itemDto.getItemImageLocation() == null || itemDto.getItemImageLocation().isBlank()) {
-            updatedItem.setItemImageLocation(item.getItemImageLocation());
-        }
-
-        return itemRepository.save(updatedItem);
+        item.setItemName(itemDto.getItemName());
+        item.setItemDescription(itemDto.getItemDescription());
+        return itemRepository.save(item);
     }
 
     @Override
+    @Transactional
     public ItemDto updateItemImage(UUID itemId, MultipartFile imageFile) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new ItemNotFoundException(itemId));
 
+        if (imageFile == null || imageFile.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An image file is required.");
+        }
+        String previousImage = item.getItemImageLocation();
         String imageLocation = fileStorageService.storeFile(imageFile);
         item.setItemImageLocation(imageLocation);
+        fileStorageService.deleteAfterCommit(previousImage);
 
         Item savedItem = itemRepository.save(item);
         return ItemMapper.mapToItemDTO(savedItem, new ItemDto());
     }
 
     @Override
+    @Transactional
     public void deleteItem(UUID itemId) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new ItemNotFoundException(itemId));
 
         itemRepository.delete(item);
+        fileStorageService.deleteAfterCommit(item.getItemImageLocation());
     }
 }

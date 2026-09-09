@@ -77,7 +77,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.GET, "/oauth2/authorization/keycloak", "/login/oauth2/code/keycloak",
                                 "/login", "/auth/csrf", "/auth/logged-out",
-                                "/actuator/health", "/actuator/health/**").permitAll()
+                                "/actuator/health", "/actuator/health/**", "/actuator/prometheus").permitAll()
                         .pathMatchers("/actuator", "/actuator/**", "/*/actuator", "/*/actuator/**",
                                 "/ds_bidding_system/*/actuator", "/ds_bidding_system/*/actuator/**").denyAll()
                         .pathMatchers(HttpMethod.GET,

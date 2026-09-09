@@ -29,6 +29,13 @@ public class GatewayServiceApplication {
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+                .route("item_images", p -> p
+                        .order(-10)
+                        .path("/uploads/images/**", "/item-service/uploads/images/**")
+                        .and().method("GET", "HEAD")
+                        .filters(f -> f.rewritePath("/item-service/(?<segment>.*)", "/${segment}")
+                                .tokenRelay().removeRequestHeader("Cookie"))
+                        .uri("lb://item-service"))
                 .route("item_swagger", p -> p
                         .order(-10)
                         .path(

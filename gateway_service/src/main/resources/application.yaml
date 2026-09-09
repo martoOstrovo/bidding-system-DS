@@ -9,6 +9,12 @@ server:
         same-site: lax
         secure: ${GATEWAY_COOKIE_SECURE:false}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+
 app:
   oauth2:
     client-secret: ${GATEWAY_OAUTH2_CLIENT_SECRET}

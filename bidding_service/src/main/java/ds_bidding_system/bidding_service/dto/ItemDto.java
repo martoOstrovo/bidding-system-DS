@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.UUID;
 
@@ -17,9 +18,11 @@ public class ItemDto {
     private UUID id;
 
     @Schema(description = "Name of the item", example = "Laptop")
+    @NotBlank
     private String itemName;
 
     @Schema(description = "Description of the item", example = "Used laptop in good condition")
+    @NotBlank
     private String itemDescription;
 
     @Schema(description = "Image location of the item", example = "/images/laptop.png")

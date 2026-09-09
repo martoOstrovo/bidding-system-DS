@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'bidding-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'bidding-service:8081' ]
+  - job_name: 'item-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'item-service:8080' ]
+  - job_name: 'mail-sender-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'mail-sender-service:8082' ]
+  - job_name: 'config-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'config-service:8070' ]
+  - job_name: 'eureka-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'eureka-service:8071' ]
+  - job_name: 'gateway-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'gateway-service:8090' ]

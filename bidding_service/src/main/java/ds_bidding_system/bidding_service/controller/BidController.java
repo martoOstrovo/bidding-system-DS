@@ -47,9 +47,10 @@ public class BidController {
             @ApiResponse(responseCode = "503", description = "Item service unavailable (Item creation aborted without retry)")
     })
     public ResponseEntity<ResponseDto> createBidWithItem(@Valid @RequestBody CreateBidRequestDto createBidRequestDto) {
-        bidService.createBidWithItem(createBidRequestDto);
+        var bid = bidService.createBidWithItem(createBidRequestDto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
+                .header("Location", "/bidding-service/api/details/" + bid.getId())
                 .body(new ResponseDto(BidConstants.STATUS_201, BidConstants.MESSAGE_201));
     }
 

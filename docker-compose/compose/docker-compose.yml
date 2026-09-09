@@ -1,4 +1,220 @@
 services:
+
+  #  ZA METRIKI
+  read:
+    image: grafana/loki:latest
+    container_name: loki-read
+    command: "-config.file=/etc/loki/config.yaml -target=read"
+    ports:
+      - "3101:3100"
+      - "7946"
+      - "9095"
+    volumes:
+      - ../observability/loki/loki-config.yaml:/etc/loki/config.yaml
+    depends_on:
+      - minio
+    healthcheck:
+      test: [ "CMD", "/usr/bin/loki", "-health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks: &loki-dns
+      bidding-network:
+        aliases:
+          - loki
+
+  write:
+    image: grafana/loki:latest
+    container_name: loki-write
+    command: "-config.file=/etc/loki/config.yaml -target=write"
+    ports:
+      - "3102:3100"
+      - "7946"
+      - "9095"
+    volumes:
+      - ../observability/loki/loki-config.yaml:/etc/loki/config.yaml
+    healthcheck:
+      test: [ "CMD", "/usr/bin/loki", "-health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    depends_on:
+      - minio
+    networks:
+      <<: *loki-dns
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    volumes:
+      - ../observability/alloy/alloy-local-config.yaml:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
+    depends_on:
+      - gateway
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        minio server /data
+    environment:
+      - MINIO_ROOT_USER=loki
+      - MINIO_ROOT_PASSWORD=supersecret
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    ports:
+      - "9000"
+    volumes:
+      - ./.data/minio:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+  prometheus:
+    image: prom/prometheus:v3.8.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    depends_on:
+      - gateway
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        /run.sh
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../observability/grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+  backend:
+    image: grafana/loki:latest
+    container_name: loki-backend
+    volumes:
+      - ../observability/loki/loki-config.yaml:/etc/loki/config.yaml
+    ports:
+      - "3100"
+      - "7946"
+    command: "-config.file=/etc/loki/config.yaml -target=backend -legacy-read-mode=false"
+    depends_on:
+      - gateway
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
+
+  gateway:
+    image: nginx:latest
+    container_name: grafana-gateway
+    depends_on:
+      - read
+      - write
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        cat <<EOF > /etc/nginx/nginx.conf
+        user  nginx;
+        worker_processes  5;  ## Default: 1
+        events {
+          worker_connections   1000;
+        }
+
+        http {
+          resolver 127.0.0.11;
+
+          server {
+            listen             3100;
+
+            location = / {
+              return 200 'OK';
+              auth_basic off;
+            }
+
+            location = /api/prom/push {
+              proxy_pass       http://write:3100\$$request_uri;
+            }
+
+            location = /api/prom/tail {
+              proxy_pass       http://read:3100\$$request_uri;
+              proxy_set_header Upgrade \$$http_upgrade;
+              proxy_set_header Connection "upgrade";
+            }
+
+            location ~ /api/prom/.* {
+              proxy_pass       http://read:3100\$$request_uri;
+            }
+
+            location = /loki/api/v1/push {
+              proxy_pass       http://write:3100\$$request_uri;
+            }
+
+            location = /loki/api/v1/tail {
+              proxy_pass       http://read:3100\$$request_uri;
+              proxy_set_header Upgrade \$$http_upgrade;
+              proxy_set_header Connection "upgrade";
+            }
+
+            location ~ /loki/api/.* {
+              proxy_pass       http://read:3100\$$request_uri;
+            }
+          }
+        }
+        EOF
+        /docker-entrypoint.sh nginx -g "daemon off;"
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: [ "CMD", "service", "nginx", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+  #ZA METRIKI
+
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.3
     command: [ "start-dev", "--import-realm" ]
@@ -12,7 +228,7 @@ services:
       GATEWAY_OAUTH2_CLIENT_SECRET: "${GATEWAY_OAUTH2_CLIENT_SECRET:?Set GATEWAY_OAUTH2_CLIENT_SECRET in docker-compose/.env}"
     volumes:
       - keycloak-data:/opt/keycloak/data
-      - ./keycloak:/opt/keycloak/data/import:ro
+      - ../keycloak:/opt/keycloak/data/import:ro
     healthcheck:
       test: [ "CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3" ]
       interval: 10s
@@ -156,6 +372,9 @@ services:
         condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "item_service"
+      FILE_UPLOAD_DIR: "/data/images"
+    volumes:
+      - item-images:/data/images
     extends:
       file: common-config.yml
       service: microservice-eureka-config
@@ -225,5 +444,6 @@ volumes:
   redis-data:
   bidding-db-data:
   item-db-data:
-#  prometheus-data:
+  item-images:
+  prometheus-data:
 #  rabbitmq-data:

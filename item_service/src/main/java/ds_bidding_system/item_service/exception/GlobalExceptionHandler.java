@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -55,6 +56,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 LocalDateTime.now()
         );
         return new ResponseEntity<>(errorResponseDTO, HttpStatus.UNPROCESSABLE_CONTENT);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDto> handleConflict(DataIntegrityViolationException ex, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponseDto(
+                request.getDescription(false), HttpStatus.CONFLICT,
+                "An item with this name or ID already exists.", LocalDateTime.now()));
     }
 
     @ExceptionHandler(Exception.class)
