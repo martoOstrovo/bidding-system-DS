@@ -52,7 +52,6 @@ public class ItemServiceImplementation implements ItemService {
             item.setId(itemID.id());
         }
 
-        // Image locations are server-managed; clients upload pixels through the image endpoint.
         item.setItemImageLocation(fileStorageService.storeFile(imageFile));
 
         Item savedItem = itemRepository.save(item);

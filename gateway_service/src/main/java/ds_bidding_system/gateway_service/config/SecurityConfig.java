@@ -55,14 +55,15 @@ public class SecurityConfig {
             ReactiveClientRegistrationRepository registrations,
             ServerOAuth2AuthorizedClientRepository clients,
             ServerOAuth2AuthorizationRequestResolver resolver,
-            @Value("${app.oauth2.public-url}") String gateway) {
+            @Value("${app.oauth2.public-url}") String gateway,
+            @Value("${app.frontend-url}") String frontend) {
         var logout = new OidcClientInitiatedServerLogoutSuccessHandler(registrations);
         logout.setPostLogoutRedirectUri(gateway + "/auth/logged-out");
         return common(http)
                 .csrf(Customizer.withDefaults())
                 .oauth2Login(login -> login.authorizationRequestResolver(resolver)
                         .authorizedClientRepository(clients)
-                        .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler("/auth/me")))
+                        .authenticationSuccessHandler(new RedirectServerAuthenticationSuccessHandler(frontend)))
                 .oauth2Client(client -> client.authorizedClientRepository(clients))
                 .logout(spec -> spec.requiresLogout(ServerWebExchangeMatchers.pathMatchers(HttpMethod.POST,
                                 "/logout", "/auth/logout", "/account_service/api/logout", "/account-service/api/logout"))

@@ -25,8 +25,6 @@ public class AuctionEventPublisher {
                 throw new IllegalStateException("Kafka did not accept the notification");
             }
         } catch (RuntimeException failure) {
-            // The auction transaction already committed; do not report a successfully accepted offer as failed.
-            // This basic setup has no durable outbox. Failed publication must be replayed operationally.
             log.error("Notification publication failed: type={}, auction={}, user={}",
                     event.type(), event.auctionId(), event.userId(), failure);
         }

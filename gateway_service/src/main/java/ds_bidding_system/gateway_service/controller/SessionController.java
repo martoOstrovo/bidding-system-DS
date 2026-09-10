@@ -11,6 +11,12 @@ import reactor.core.publisher.Mono;
 
 @RestController
 public class SessionController {
+    private final String frontendUrl;
+
+    public SessionController(@org.springframework.beans.factory.annotation.Value("${app.frontend-url}") String frontendUrl) {
+        this.frontendUrl = frontendUrl;
+    }
+
     @GetMapping({"/auth/login", "/account_service/api/login", "/account-service/api/login"})
     public org.springframework.http.ResponseEntity<Void> login() {
         return org.springframework.http.ResponseEntity.status(302)
@@ -36,7 +42,8 @@ public class SessionController {
     }
 
     @GetMapping("/auth/logged-out")
-    public Map<String, String> loggedOut() {
-        return Map.of("status", "logged_out", "login", "/oauth2/authorization/keycloak");
+    public org.springframework.http.ResponseEntity<Void> loggedOut() {
+        return org.springframework.http.ResponseEntity.status(302)
+                .location(java.net.URI.create(frontendUrl)).build();
     }
 }

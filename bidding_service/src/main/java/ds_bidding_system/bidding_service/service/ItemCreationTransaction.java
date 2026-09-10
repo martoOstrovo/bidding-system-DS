@@ -19,7 +19,6 @@ public class ItemCreationTransaction {
     private final BidRepository bids;
     private final ItemFeignClient items;
 
-    // The intent was committed before this transaction. A failed commit leaves it for cleanup.
     @Transactional
     public Bid create(UUID itemId, CreateBidRequestDto request, String ownerId) {
         if (ownerId == null || ownerId.isBlank()) {
@@ -32,7 +31,9 @@ public class ItemCreationTransaction {
         bid.setId(cleanup.getBidId());
         bid.setItemId(itemId);
         bid.setOwnerId(ownerId);
-        bid.setExpirationDate(request.getExpirationDate());
+        // Start the chosen duration after the item service responds.
+        bid.setExpirationDate(request.getDurationSeconds() == null ? request.getExpirationDate()
+                : java.time.OffsetDateTime.now().plusSeconds(request.getDurationSeconds()));
         bid.setStartingPrice(request.getStartingPrice());
         bid.setCurrentBid(request.getStartingPrice());
         bids.saveAndFlush(bid);

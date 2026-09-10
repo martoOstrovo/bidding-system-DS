@@ -1,6 +1,7 @@
 # Upserts only the gateway client; startup realm imports skip existing realms.
 $ErrorActionPreference = 'Stop'
-$envPath = Join-Path $PSScriptRoot '.env'
+$composeRoot = Split-Path -Parent $PSScriptRoot
+$envPath = Join-Path $composeRoot '.env'
 $envText = [System.IO.File]::ReadAllText($envPath)
 $clientSecret = [regex]::Match($envText, '(?m)^GATEWAY_OAUTH2_CLIENT_SECRET=(.*)$').Groups[1].Value.Trim()
 if (-not $clientSecret) {
@@ -22,7 +23,7 @@ $adminToken = Invoke-RestMethod -Method Post -Uri 'http://localhost:8083/realms/
     grant_type = 'password'; client_id = 'admin-cli'; username = $adminUser; password = $adminPassword
 }
 $headers = @{ Authorization = 'Bearer ' + $adminToken.access_token }
-$realm = Get-Content -Raw (Join-Path $PSScriptRoot 'keycloak/bidding-realm.json') | ConvertFrom-Json
+$realm = Get-Content -Raw (Join-Path $composeRoot 'keycloak/bidding-realm.json') | ConvertFrom-Json
 $existingScopes = Invoke-RestMethod -Uri 'http://localhost:8083/admin/realms/bidding/client-scopes' -Headers $headers
 foreach ($scopeTemplate in $realm.clientScopes) {
     if (-not ($existingScopes | Where-Object name -eq $scopeTemplate.name)) {

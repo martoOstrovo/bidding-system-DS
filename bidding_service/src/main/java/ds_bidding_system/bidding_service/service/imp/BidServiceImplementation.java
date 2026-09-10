@@ -76,7 +76,9 @@ public class BidServiceImplementation implements BidService {
     public Bid createBid(BidDto bidDto, String ownerId) {
         requireUser(ownerId);
         validatePrice(bidDto.getStartingPrice());
+        OffsetDateTime expiration = resolveExpiration(bidDto.getExpirationDate(), bidDto.getDurationSeconds(), null);
         Bid bid = BidMapper.mapToBid(bidDto, new Bid());
+        bid.setExpirationDate(expiration);
         bid.setCurrentBid(bidDto.getStartingPrice());
         bid.setOwnerId(ownerId);
         BidID bidID = new BidID(UUID.randomUUID());
@@ -88,6 +90,7 @@ public class BidServiceImplementation implements BidService {
     public Bid createBidWithItem(CreateBidRequestDto request, String ownerId) {
         requireUser(ownerId);
         validatePrice(request.getStartingPrice());
+        resolveExpiration(request.getExpirationDate(), request.getDurationSeconds(), null);
         ItemDto itemDto = request.getItem();
         // Own the ID so compensation can never delete a caller-selected existing item.
         itemDto.setId(UUID.randomUUID());
@@ -137,7 +140,9 @@ public class BidServiceImplementation implements BidService {
         requireActive(bid);
         requireNoOffers(bid);
         validatePrice(bidDto.getStartingPrice());
+        OffsetDateTime expiration = resolveExpiration(bidDto.getExpirationDate(), bidDto.getDurationSeconds(), bid.getExpirationDate());
         Bid updatedBid = BidMapper.mapToBid(bidDto, bid);
+        updatedBid.setExpirationDate(expiration);
         updatedBid.setCurrentBid(bidDto.getStartingPrice());
         return bidRepository.save(updatedBid);
     }
@@ -163,6 +168,29 @@ public class BidServiceImplementation implements BidService {
                 || amount.precision() - amount.scale() > 17) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be non-negative with at most 17 integer digits and two decimals.");
         }
+    }
+
+    private OffsetDateTime resolveExpiration(OffsetDateTime expiration, Long durationSeconds, OffsetDateTime existingExpiration) {
+        OffsetDateTime now = OffsetDateTime.now();
+        if ((expiration == null) == (durationSeconds == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Supply either durationSeconds or expirationDate.");
+        }
+        if (durationSeconds != null) {
+            if (durationSeconds < 60) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duration must be at least 60 seconds.");
+            }
+            try {
+                return now.plusSeconds(durationSeconds);
+            } catch (java.time.DateTimeException | ArithmeticException invalid) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duration exceeds the supported date range.");
+            }
+        }
+        // A price-only edit should preserve the deadline, including in its final minute.
+        if (existingExpiration != null && expiration.isEqual(existingExpiration)) return existingExpiration;
+        if (expiration.isBefore(now.plusMinutes(1))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expiration must be at least 60 seconds from now.");
+        }
+        return expiration;
     }
 
     private void requireActive(Bid bid) {

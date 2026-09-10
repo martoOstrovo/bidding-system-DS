@@ -1,14 +1,16 @@
 # End-to-end Authorization Code + PKCE test. Uses and removes a temporary user.
+param([string]$FrontendUrl = 'http://localhost:5173', [switch]$CheckAccountProfile = $true)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Net.Http
 $keycloakUrl = 'http://localhost:8083'
 $gatewayUrl = 'http://localhost:8090'
-$envText = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '.env'))
+$envText = [System.IO.File]::ReadAllText((Join-Path (Split-Path -Parent $PSScriptRoot) '.env'))
 $adminUser = [regex]::Match($envText, '(?m)^KEYCLOAK_ADMIN_USERNAME=(.*)$').Groups[1].Value.Trim()
 $adminPassword = [regex]::Match($envText, '(?m)^KEYCLOAK_ADMIN_PASSWORD=(.*)$').Groups[1].Value.Trim()
 $testUsername = 'bff-smoke-' + [guid]::NewGuid().ToString('N')
 $testPassword = [guid]::NewGuid().ToString('N') + 'Aa1!'
 $testUserId = $null
+$profileRequested = $false
 $handler = [System.Net.Http.HttpClientHandler]::new()
 $handler.AllowAutoRedirect = $false
 $browser = [System.Net.Http.HttpClient]::new($handler)
@@ -73,7 +75,10 @@ try {
     Use-BrowserLocalhostCookieBehavior
     $callbackResponse = $browser.GetAsync($callback).GetAwaiter().GetResult()
     Check-Status $callbackResponse 302 'Gateway callback'
-    if ([string]$callbackResponse.Headers.Location -ne '/auth/me') { throw 'The gateway did not complete OAuth login.' }
+    if (([string]$callbackResponse.Headers.Location).TrimEnd('/') -ne $FrontendUrl.TrimEnd('/')) {
+        $redirectPath = ([string]$callbackResponse.Headers.Location).Split('?')[0]
+        throw "The gateway returned to '$redirectPath' instead of the frontend. Rebuild/restart the gateway and check FRONTEND_URL."
+    }
     $callbackResponse.Dispose()
     $cookie = $handler.CookieContainer.GetCookies([uri]$gatewayUrl)['BIDDING_SESSION']
     if (-not $cookie -or -not $cookie.HttpOnly) { throw 'Missing HttpOnly gateway session cookie.' }
@@ -85,6 +90,26 @@ try {
     if ($identityText -match 'access_token|refresh_token|id_token|eyJ') { throw 'Identity response exposed token data.' }
     if (-not @($identity.authorities | Where-Object { $_ -like 'ROLE_*' }).Count) { throw 'OIDC realm roles were not mapped.' }
     $meResponse.Dispose()
+
+    if ($CheckAccountProfile) {
+        $profileRequested = $true
+        $profileResponse = $browser.GetAsync("$gatewayUrl/account-service/api/me").GetAwaiter().GetResult()
+        Check-Status $profileResponse 200 'Persisted account profile'
+        $profile = $profileResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+        if ($profile.userId -ne $testUserId -or $profile.username -ne $testUsername) { throw 'The persisted account profile did not match the test identity.' }
+        $profileResponse.Dispose()
+        $profileCsrfResponse = $browser.GetAsync("$gatewayUrl/auth/csrf").GetAwaiter().GetResult()
+        $profileCsrf = $profileCsrfResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+        $profileCsrfResponse.Dispose()
+        $deleteProfile = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Delete, "$gatewayUrl/account-service/api/me")
+        $deleteProfile.Headers.Add($profileCsrf.headerName, $profileCsrf.token)
+        $deletedProfile = $browser.SendAsync($deleteProfile).GetAwaiter().GetResult()
+        Check-Status $deletedProfile 204 'Test account cleanup'
+        $deletedProfile.Dispose()
+        $deleteProfile.Dispose()
+        $profileRequested = $false
+        $testUserId = $null
+    }
 
     $api = $browser.GetAsync("$gatewayUrl/item-service/api/get/not-a-uuid").GetAwaiter().GetResult()
     Check-Status $api 400 'Session-authenticated API routing'
@@ -111,6 +136,7 @@ try {
     $logoutResponse.Dispose()
     $logout.Dispose()
     for ($i = 0; $i -lt 5; $i++) {
+        if ($next -eq $FrontendUrl -or $next -eq "$FrontendUrl/") { break }
         if (([uri]$next).Authority -notin @('localhost:8083', 'localhost:8090')) { throw 'Unexpected logout redirect host.' }
         $response = $browser.GetAsync($next).GetAwaiter().GetResult()
         if ([int]$response.StatusCode -eq 200) {
@@ -126,6 +152,20 @@ try {
     $afterLogout.Dispose()
     Write-Output 'BFF login, PKCE, session, role mapping, CSRF, and logout checks passed.'
 } finally {
+    if ($profileRequested -and $testUserId) {
+        try {
+            $cleanupCsrfResponse = $browser.GetAsync("$gatewayUrl/auth/csrf").GetAwaiter().GetResult()
+            $cleanupCsrf = $cleanupCsrfResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+            $cleanupCsrfResponse.Dispose()
+            $cleanupRequest = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Delete, "$gatewayUrl/account-service/api/me")
+            $cleanupRequest.Headers.Add($cleanupCsrf.headerName, $cleanupCsrf.token)
+            $cleanupResponse = $browser.SendAsync($cleanupRequest).GetAwaiter().GetResult()
+            if ([int]$cleanupResponse.StatusCode -eq 204) { $testUserId = $null; Write-Output 'Removed temporary account profile and Keycloak user.' }
+            else { Write-Warning 'Test profile cleanup did not succeed; the temporary local profile may need cleanup.' }
+            $cleanupResponse.Dispose()
+            $cleanupRequest.Dispose()
+        } catch { Write-Warning 'Could not clean up the temporary local account profile.' }
+    }
     if ($testUserId) {
         $null = Invoke-RestMethod -Method Delete -Uri "$keycloakUrl/admin/realms/bidding/users/$testUserId" -Headers $adminHeaders
         Write-Output 'Removed temporary login test user.'

@@ -78,7 +78,8 @@ public class BidController {
 
     @PostMapping("/create-with-item")
     @Operation(summary = "Create a bid listing along with its item",
-               description = "Creates the item in item_service via Feign and creates the bid listing linked to the generated itemId.")
+               description = "Creates the item in item_service via Feign and creates the bid listing linked to the generated itemId. "
+                       + "Supply durationSeconds (minimum 60, no configured maximum) or expirationDate at least 60 seconds ahead.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Bid listing and item created successfully",
                     content = @Content(schema = @Schema(implementation = ResponseDto.class))),
@@ -98,7 +99,7 @@ public class BidController {
     @Operation(summary = "Create a bid listing",
                description = "Creates a new bid listing with a randomly generated UUID. " +
                              "startingPrice is required; currentBid begins at that price and highestBidderId is assigned only by an accepted offer. " +
-                             "expirationDate must be a future timezone-aware date/time.")
+                             "Supply durationSeconds (minimum 60, no configured maximum) or expirationDate at least 60 seconds ahead.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Bid listing created successfully",
                     content = @Content(schema = @Schema(implementation = ResponseDto.class),
@@ -156,9 +157,10 @@ public class BidController {
     @PutMapping("/put/{id}")
     @Operation(summary = "Update a bid listing",
                description = "Only the owner can edit an unexpired auction with no offers. " +
-                             "Updatable fields: itemId, startingPrice, expirationDate. " +
+                             "Updatable fields: itemId, startingPrice, expirationDate or durationSeconds. " +
                              "Ownership, highestBidderId and currentBid cannot be supplied by the caller. " +
-                             "expirationDate must be a future timezone-aware date/time.")
+                             "New durations must be at least 60 seconds, with no configured maximum. Owners can shorten or extend the deadline. " +
+                             "Supply the exact existing expirationDate to preserve it, including in the final minute.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bid listing updated successfully",
                     content = @Content(schema = @Schema(implementation = ResponseDto.class))),

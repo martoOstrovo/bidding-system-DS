@@ -41,7 +41,6 @@ public class AuctionMailFunctions {
             log.info("Skipping {} notification for deleted account {}", expected, event.userId());
             return;
         }
-        // Let lookup/SMTP errors reach the binder for retry and dead-letter handling.
         switch (expected) {
             case WON -> mail.sendBidWonEmail(user, event.auctionId(), event.amount());
             case ENDED -> mail.sendAuctionEndedEmail(user, event.auctionId(), event.amount(), event.sold());

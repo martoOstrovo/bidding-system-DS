@@ -1,5 +1,20 @@
 services:
 
+  frontend:
+    profiles: ["frontend"]
+    build:
+      context: ../../frontend
+      args:
+        VITE_CURRENCY: "${VITE_CURRENCY:-EUR}"
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
   #  ZA METRIKI
   read:
     image: grafana/loki:latest
@@ -430,8 +445,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-#      rabbit:
-#        condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "bidding_service"
       KAFKA_BROKERS: kafka:29092
@@ -515,6 +528,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: "gateway_service"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
       GATEWAY_OAUTH2_CLIENT_SECRET: "${GATEWAY_OAUTH2_CLIENT_SECRET:?Set GATEWAY_OAUTH2_CLIENT_SECRET in docker-compose/.env}"
       KEYCLOAK_BACKCHANNEL_URL: "http://keycloak:8080/realms/bidding"
       KEYCLOAK_ISSUER_URI: "http://localhost:8083/realms/bidding"
@@ -543,4 +557,3 @@ volumes:
   item-db-data:
   item-images:
   prometheus-data:
-#  rabbitmq-data:

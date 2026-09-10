@@ -18,7 +18,6 @@ public class ImageCleanupConfig {
 
     @Scheduled(fixedDelayString = "${file.cleanup.interval-ms:3600000}", initialDelayString = "${file.cleanup.interval-ms:3600000}")
     public void removeOrphans() {
-        // Grace period keeps files belonging to in-flight uploads out of the sweep.
         files.removeOrphans(new HashSet<>(items.findImageLocations()), Instant.now().minusSeconds(86400));
     }
 }

@@ -65,6 +65,7 @@ public class AccountService {
     }
 
     public UserDto getUser(String id) {
+        requireUserId(id);
         // Fetch current Keycloak data, including accounts created before this service existed.
         // Never recreate a deleted account from an old, still-valid access token's claims.
         UserRepresentation user = users.get(id).toRepresentation();
@@ -75,6 +76,7 @@ public class AccountService {
     }
 
     public void deleteUser(String id) {
+        requireUserId(id);
         // A retry can finish local deletion if Keycloak deletion previously succeeded.
         try { users.get(id).remove(); }
         catch (NotFoundException ignored) { }
@@ -82,7 +84,14 @@ public class AccountService {
     }
 
     public void logout(String id) {
+        requireUserId(id);
         users.get(id).logout();
+    }
+
+    private void requireUserId(String id) {
+        if (id == null || id.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access token is missing the user ID. Sign in again.");
+        }
     }
 
     private UserDto save(UserRepresentation user) {

@@ -18,10 +18,11 @@ $realmUrl = "$KeycloakUrl/admin/realms/bidding"
 $template = Get-Content -Raw -LiteralPath (Join-Path $composeRoot 'keycloak/bidding-realm.json') | ConvertFrom-Json
 $client = $template.clients | Where-Object clientId -eq 'account-service'
 $client.secret = $settings['ACCOUNT_KEYCLOAK_CLIENT_SECRET']
-$existing = @(Invoke-RestMethod -Uri "$realmUrl/clients?clientId=account-service" -Headers $headers)
+# Assign the JSON array directly: @(...Invoke-RestMethod...) wraps an empty array as one entry.
+$existing = Invoke-RestMethod -Uri "$realmUrl/clients?clientId=account-service" -Headers $headers
 if ($existing.Count -eq 0) {
     $null = Invoke-RestMethod -Method Post -Uri "$realmUrl/clients" -Headers $headers -ContentType 'application/json' -Body ($client | ConvertTo-Json -Depth 15)
-    $existing = @(Invoke-RestMethod -Uri "$realmUrl/clients?clientId=account-service" -Headers $headers)
+    $existing = Invoke-RestMethod -Uri "$realmUrl/clients?clientId=account-service" -Headers $headers
 } else {
     $null = Invoke-RestMethod -Method Put -Uri "$realmUrl/clients/$($existing[0].id)" -Headers $headers -ContentType 'application/json' -Body ($client | ConvertTo-Json -Depth 15)
 }

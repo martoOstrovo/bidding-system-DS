@@ -24,7 +24,6 @@ public class Bid {
     @Column(name = "item_id", nullable = false)
     private UUID itemId;
 
-    // Nullable only for pre-existing listings whose creator is unknown; immutable after creation.
     @Column(name = "owner_id", updatable = false)
     private String ownerId;
 

@@ -16,6 +16,7 @@ management:
         include: health,prometheus
 
 app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
   oauth2:
     client-secret: ${GATEWAY_OAUTH2_CLIENT_SECRET}
     public-url: ${GATEWAY_PUBLIC_URL:http://localhost:8090}

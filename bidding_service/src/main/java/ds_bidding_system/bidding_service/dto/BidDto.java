@@ -60,10 +60,13 @@ public class BidDto {
             example = "30.00", accessMode = Schema.AccessMode.READ_ONLY)
     private BigDecimal currentBid;
 
-    @Schema(description = "Timezone-aware date and time when the listing expires (must be a future date)",
-             example = "2026-12-31T23:59:59+02:00",
-            requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "Expiration date cannot be null.")
+    @Schema(description = "Alternative to durationSeconds: expiration at least 60 seconds from the server's current time, with no configured maximum. Updates may preserve the exact existing deadline even with less than a minute remaining.")
     @Future(message = "Expiration date must be in the future.")
     private OffsetDateTime expirationDate;
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @jakarta.validation.constraints.Min(value = 60, message = "Duration must be at least 60 seconds.")
+    @Schema(description = "Duration in whole seconds, minimum 60 with no configured maximum. Supply this or expirationDate, not both. The server calculates the deadline.",
+            example = "60", accessMode = Schema.AccessMode.WRITE_ONLY)
+    private Long durationSeconds;
 }

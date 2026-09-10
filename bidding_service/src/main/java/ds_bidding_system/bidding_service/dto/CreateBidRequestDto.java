@@ -24,9 +24,8 @@ public class CreateBidRequestDto {
     @Schema(description = "Item details to be created in item_service via Feign")
     private ItemDto item;
 
-    @NotNull(message = "Expiration date cannot be null.")
     @Future(message = "Expiration date must be in the future.")
-    @Schema(description = "Timezone-aware date and time when the listing expires", example = "2026-12-31T23:59:59+02:00")
+    @Schema(description = "Alternative to durationSeconds: timezone-aware expiration at least 60 seconds from the server's current time, with no configured maximum")
     private OffsetDateTime expirationDate;
 
     @NotNull(message = "Starting price is required.")
@@ -35,4 +34,8 @@ public class CreateBidRequestDto {
     @Schema(description = "Opening price; the first offer must exceed this amount", example = "25.00",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal startingPrice;
+
+    @jakarta.validation.constraints.Min(value = 60, message = "Duration must be at least 60 seconds.")
+    @Schema(description = "Duration in whole seconds, minimum 60 with no configured maximum. Supply this or expirationDate, not both. The server calculates the deadline.", example = "60")
+    private Long durationSeconds;
 }

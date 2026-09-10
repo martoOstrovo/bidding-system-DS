@@ -23,7 +23,10 @@ public class GatewayServiceApplication {
 
     @Bean
     public RedisRateLimiter redisRateLimiter() {
-        return new RedisRateLimiter(10, 30, 1);
+        RedisRateLimiter limiter = new RedisRateLimiter(10, 30, 1);
+        limiter.getConfig().put("account_registration", new RedisRateLimiter.Config()
+                .setReplenishRate(5).setBurstCapacity(300).setRequestedTokens(60));
+        return limiter;
     }
 
     @Bean
